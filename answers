@@ -30,7 +30,7 @@ SELECT
     r.away_team,
     s.winner AS shootout_winner
 FROM results r
-JOIN shootouts s
+INNER JOIN shootouts s
     ON r.date = s.date
     AND r.home_team = s.home_team
     AND r.away_team = s.away_team
@@ -44,7 +44,7 @@ WITH tournament_totals AS (
         r.tournament,
         COUNT(*) AS total_goals
     FROM goalscorers g
-    JOIN results r
+    INNER JOIN results r
         ON g.date = r.date
         AND g.home_team = r.home_team
         AND g.away_team = r.away_team
@@ -58,7 +58,7 @@ scorer_totals AS (
         g.scorer,
         COUNT(*) AS goals_scored
     FROM goalscorers g
-    JOIN results r
+    INNER JOIN results r
         ON g.date = r.date
         AND g.home_team = r.home_team
         AND g.away_team = r.away_team
@@ -73,7 +73,7 @@ SELECT
     t.total_goals,
     (s.goals_scored / t.total_goals * 100) AS pct_of_tournament
 FROM scorer_totals s
-JOIN tournament_totals t
+INNER JOIN tournament_totals t
     ON s.tournament = t.tournament
 WHERE s.goals_scored = (
     SELECT MAX(goals_scored) 
