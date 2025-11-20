@@ -1,1 +1,131 @@
+----1----
+SELECT 
+    AVG(home_score + away_score) AS avg_goals_per_game
+FROM results
+WHERE YEAR(date) BETWEEN 1900 AND 2000;
 
+----2----
+SELECT winner AS country, COUNT(*) AS shootout_wins
+FROM shootouts
+GROUP BY winner
+ORDER BY country ASC;
+
+----3----
+ALTER TABLE results
+ADD PRIMARY KEY (date, home_team, away_team);
+
+ALTER TABLE goalscorers
+ADD CONSTRAINT fk_goalscorers_results
+FOREIGN KEY (date, home_team, away_team)
+REFERENCES results(date, home_team, away_team);
+
+ALTER TABLE shootouts
+ADD CONSTRAINT fk_shootouts_results
+FOREIGN KEY (date, home_team, away_team)
+REFERENCES results(date, home_team, away_team);
+
+----4-----
+SELECT 
+    r.home_team,
+    r.away_team,
+    s.winner AS shootout_winner
+FROM results r
+JOIN shootouts s
+    ON r.date = s.date
+    AND r.home_team = s.home_team
+    AND r.away_team = s.away_team
+WHERE r.home_score = 1
+  AND r.away_score = 1;
+
+----5----
+-- 1. Total goals per tournament
+WITH tournament_totals AS (
+    SELECT 
+        r.tournament,
+        COUNT(*) AS total_goals
+    FROM goalscorers g
+    JOIN results r
+        ON g.date = r.date
+        AND g.home_team = r.home_team
+        AND g.away_team = r.away_team
+    GROUP BY r.tournament
+),
+
+-- 2. Goals per scorer per tournament
+scorer_totals AS (
+    SELECT 
+        r.tournament,
+        g.scorer,
+        COUNT(*) AS goals_scored
+    FROM goalscorers g
+    JOIN results r
+        ON g.date = r.date
+        AND g.home_team = r.home_team
+        AND g.away_team = r.away_team
+    GROUP BY r.tournament, g.scorer
+)
+
+-- 3. Join and pick top scorer per tournament
+SELECT 
+    s.tournament,
+    s.scorer,
+    s.goals_scored,
+    t.total_goals,
+    (s.goals_scored / t.total_goals * 100) AS pct_of_tournament
+FROM scorer_totals s
+JOIN tournament_totals t
+    ON s.tournament = t.tournament
+WHERE s.goals_scored = (
+    SELECT MAX(goals_scored) 
+    FROM scorer_totals 
+    WHERE tournament = s.tournament
+);
+
+----6----
+SELECT
+    *,
+    CASE
+        WHEN date IS NULL THEN 'Missing date'
+        WHEN home_team IS NULL OR away_team IS NULL THEN 'Missing team name'
+        WHEN home_score IS NULL OR away_score IS NULL THEN 'Missing score'
+        WHEN home_team = away_team THEN 'Same team listed twice'
+        WHEN home_score < 0 OR away_score < 0 THEN 'Invalid negative score'
+        ELSE 'OK'
+    END AS data_quality_flag
+FROM results;
+
+SELECT
+    *,
+    CASE
+        WHEN date IS NULL THEN 'Missing date'
+        WHEN scorer IS NULL OR scorer = '' THEN 'Missing scorer'
+        WHEN minute < 0 OR minute > 120 THEN 'Unrealistic minute'
+        ELSE 'OK'
+    END AS data_quality_flag
+FROM goalscorers;
+
+SELECT
+    *,
+    CASE
+        WHEN date IS NULL THEN 'Missing date'
+        WHEN winner IS NULL THEN 'Missing winner'
+        WHEN score IS NULL THEN 'Missing shootout score'
+        ELSE 'OK'
+    END AS data_quality_flag
+FROM shootouts;
+
+----7----
+UPDATE results
+SET home_team = TRIM(home_team),
+    away_team = TRIM(away_team)
+WHERE home_team IS NOT NULL OR away_team IS NOT NULL;
+
+----emptyStrings----
+UPDATE results
+SET home_team = NULL
+WHERE home_team = '';
+
+----negScores----
+UPDATE results
+SET away_score = 0
+WHERE away_score < 0;
