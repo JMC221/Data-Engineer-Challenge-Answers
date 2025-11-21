@@ -1,16 +1,16 @@
-----1----
+----1----Create a query that calculates the average number of goals per game between 1900 and 2000.
 SELECT 
     AVG(home_score + away_score) AS avg_goals_per_game
 FROM results
 WHERE YEAR(date) BETWEEN 1900 AND 2000;
 
-----2----
+----2----Create a query that counts the number of shootouts wins by country and arrange in alphabetical order.
 SELECT winner AS country, COUNT(*) AS shootout_wins
 FROM shootouts
 GROUP BY winner
 ORDER BY country ASC;
 
-----3----
+----3----Create a reliable key that allows the joining together of goal scorers, results, and shootouts.
 ALTER TABLE results
 ADD PRIMARY KEY (date, home_team, away_team);
 
@@ -24,7 +24,7 @@ ADD CONSTRAINT fk_shootouts_results
 FOREIGN KEY (date, home_team, away_team)
 REFERENCES results(date, home_team, away_team);
 
-----4-----
+----4-----Create a query that identifies which teams have won a penalty shootout after a 1-1 draw.
 SELECT 
     r.home_team,
     r.away_team,
@@ -37,7 +37,7 @@ INNER JOIN shootouts s
 WHERE r.home_score = 1
   AND r.away_score = 1;
 
-----5----
+----5----Create a query that identifies the top goal scorer by tournament, and what percentage that equates to for all goals scored in the tournament.
 -- 1. Total goals per tournament
 WITH tournament_totals AS (
     SELECT 
@@ -81,7 +81,7 @@ WHERE s.goals_scored = (
     WHERE tournament = s.tournament
 );
 
-----6----
+----6----Create and additional column that flags records with data quality issues
 SELECT
     *,
     CASE
@@ -114,7 +114,7 @@ SELECT
     END AS data_quality_flag
 FROM shootouts;
 
-----7----
+----7----Resolve the identified quality issues
 UPDATE results
 SET home_team = TRIM(home_team),
     away_team = TRIM(away_team)
