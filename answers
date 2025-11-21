@@ -12,7 +12,8 @@ ORDER BY country ASC;
 
 ----3----Create a reliable key that allows the joining together of goal scorers, results, and shootouts.
 ALTER TABLE results
-ADD PRIMARY KEY (date, home_team, away_team);
+ADD CONSTRAINT pk_results
+PRIMARY KEY (date, home_team, away_team);
 
 ALTER TABLE goalscorers
 ADD CONSTRAINT fk_goalscorers_results
@@ -82,50 +83,43 @@ WHERE s.goals_scored = (
 );
 
 ----6----Create and additional column that flags records with data quality issues
-SELECT
-    *,
+SELECT home_score,
     CASE
-        WHEN date IS NULL THEN 'Missing date'
-        WHEN home_team IS NULL OR away_team IS NULL THEN 'Missing team name'
-        WHEN home_score IS NULL OR away_score IS NULL THEN 'Missing score'
-        WHEN home_team = away_team THEN 'Same team listed twice'
         WHEN home_score < 0 OR away_score < 0 THEN 'Invalid negative score'
         ELSE 'OK'
     END AS data_quality_flag
 FROM results;
 
-SELECT
-    *,
+SELECT minute,
     CASE
-        WHEN date IS NULL THEN 'Missing date'
-        WHEN scorer IS NULL OR scorer = '' THEN 'Missing scorer'
         WHEN minute < 0 OR minute > 120 THEN 'Unrealistic minute'
         ELSE 'OK'
     END AS data_quality_flag
 FROM goalscorers;
 
-SELECT
-    *,
+SELECT first_shooter,
     CASE
-        WHEN date IS NULL THEN 'Missing date'
-        WHEN winner IS NULL THEN 'Missing winner'
-        WHEN score IS NULL THEN 'Missing shootout score'
+        WHEN first_shooter = '' THEN 'change to NULL'
         ELSE 'OK'
     END AS data_quality_flag
 FROM shootouts;
 
 ----7----Resolve the identified quality issues
-UPDATE results
-SET home_team = TRIM(home_team),
-    away_team = TRIM(away_team)
-WHERE home_team IS NOT NULL OR away_team IS NOT NULL;
-
-----emptyStrings----
-UPDATE results
-SET home_team = NULL
-WHERE home_team = '';
-
 ----negScores----
+UPDATE results
+SET home_score = 0
+WHERE home_score < 0;
+
 UPDATE results
 SET away_score = 0
 WHERE away_score < 0;
+
+----Fix goal scorerEntries----
+UPDATE goalscorers
+SET minute = NULL
+WHERE minute < 0 OR minute > 120;
+
+----ChangeToNull----
+UPDATE shootouts
+SET first_shooter = NULL
+WHERE first_shooter = '';
